@@ -10,6 +10,9 @@
 
 Adafruit_BME280 bme;    
 
+const boolean debug = false;
+const uint8_t bme_i2c_address = 0x76;
+
 const char* ssid = "xxxxxxxx";
 const char* password = "xxxxxxxx";
 
@@ -24,8 +27,25 @@ const int led = 13;
 
 void handleRoot() {
   digitalWrite(led, 1);
-  response = "Environmental Sensor based on esp8266 & Bosch BME280.";
-  mimeType = "text/plain";
+  response = "";
+  response += "<html>";
+  response +=   "<head>";
+  response +=     "<title>Environmental Sensor (ESP8266, BME280)</title>";
+  response +=     "<style>* {font-family: 'Droid Sans', Arial, Verdana, sans-serif;}</style>";
+  response +=   "</head>";
+  response +=   "<body>";
+  response +=     "<p>Environmental Sensor based on esp8266 & Bosch BME280.<br>Paths available:</p>";
+  response +=     "<ul>";
+  response +=       "<li><a href=\"/state\">Sensor State</a></li>";
+  response +=       "<li><a href=\"/summary\">Sensor Summary</a></li>";
+  response +=       "<li><a href=\"/temperature\">Temperature Value</a></li>";
+  response +=       "<li><a href=\"/pressure\">Pressure Value</a></li>";
+  response +=       "<li><a href=\"/humidity\">Humidity Value</a></li>";
+  response +=       "<li><a href=\"/altitude\">Altitude Value (approx.)</a></li>";
+  response +=     "</ul>";
+  response +=   "</body>";
+  response += "</html>";
+  mimeType = "text/html";
   server.send(200, mimeType, response);
   digitalWrite(led, 0);
 }
@@ -41,34 +61,60 @@ void handleState() {
 void handleSummary() {
   digitalWrite(led, 1);
   response = "";
-  response += "Température = ";
-  response += bme.readTemperature();
-  response += " °C";
-  response += "\n";
-  response += "Pression = ";
-  response += (bme.readPressure() / 100.0F);
-  response += " hPa";
-  response += "\n";
-  response += "Humidité = ";
-  response += bme.readHumidity();
-  response += " %";
-  response += "\n";
-  response += "Altitude (approx.) = ";
-  response += bme.readAltitude(SEALEVELPRESSURE_HPA);
-  response += " mètres";
-  response += "\n";
-  mimeType = "text/plain";
+  response += "<html>";
+  response +=   "<head>";
+  response +=     "<title>Environmental Sensor (ESP8266, BME280)</title>";
+  response +=     "<style>* {font-family: 'Droid Sans', Arial, Verdana, sans-serif;}</style>";
+  response +=     "<meta http-equiv=\"refresh\" content=\"1\" >";
+  response +=   "</head>";
+  response +=   "<body>";
+  response +=     "<p>Environmental Sensor based on esp8266 & Bosch BME280.<br>Paths available:</p>";
+  response +=     "<table>";
+  response +=       "<thead><td>Sensor</td><td>Value</td><td>Unit</td></tr>";
+  response +=       "<tr>";
+  response +=         "<td>Temperature</td>";
+  response +=         "<td>";
+  response +=           bme.readTemperature();
+  response +=         "</td>";
+  response +=         "<td>°C</td>";
+  response +=       "</tr>";
+  response +=       "<tr>";
+  response +=         "<td>Pressure</td>";
+  response +=         "<td>";
+  response +=           (bme.readPressure() / 100.0F);
+  response +=         "</td>";
+  response +=         "<td>hPa</td>";
+  response +=       "</tr>";
+  response +=       "<tr>";
+  response +=         "<td>Humidity</td>";
+  response +=         "<td>";
+  response +=           bme.readHumidity();
+  response +=         "</td>";
+  response +=         "<td>%</td>";
+  response +=       "</tr>";
+  response +=       "<tr>";
+  response +=         "<td>Altitude (beta / approx.)</td>";
+  response +=         "<td>";
+  response +=           bme.readAltitude(SEALEVELPRESSURE_HPA);
+  response +=         "</td>";
+  response +=         "<td>m</td>";
+  response +=       "</tr>";
+  response +=     "</table>";
+  response +=     "<a href=\"/\">Back</a>";
+  response +=   "</body>";
+  response += "</html>";
+  mimeType = "text/html";
   server.send(200, mimeType, response);
-  Serial.print(response);
+  if (debug) {
+    Serial.println(response);
+  }
   digitalWrite(led, 0);
 }
 
 void handleTemperature() {
   digitalWrite(led, 1);
   response = "";
-  response += "Température = ";
   response += bme.readTemperature();
-  response += " °C";
   mimeType = "text/plain";
   server.send(200, mimeType, response);
   Serial.print(response);
@@ -78,9 +124,7 @@ void handleTemperature() {
 void handlePressure() {
   digitalWrite(led, 1);
   response = "";
-  response += "Pression = ";
   response += (bme.readPressure() / 100.0F);
-  response += " hPa";
   mimeType = "text/plain";
   server.send(200, mimeType, response);
   Serial.print(response);
@@ -90,9 +134,7 @@ void handlePressure() {
 void handleHumidity() {
   digitalWrite(led, 1);
   response = "";
-  response += "Humidité = ";
   response += bme.readHumidity();
-  response += " %";
   mimeType = "text/plain";
   server.send(200, mimeType, response);
   Serial.print(response);
@@ -102,9 +144,7 @@ void handleHumidity() {
 void handleAltitude() {
   digitalWrite(led, 1);
   response = "";
-  response += "Altitude (approx.) = ";
   response += bme.readAltitude(SEALEVELPRESSURE_HPA);
-  response += " mètres";
   mimeType = "text/plain";
   server.send(200, mimeType, response);
   Serial.print(response);
@@ -144,17 +184,17 @@ void setup(void){
     Serial.print(".");
   }
   Serial.println("");
-  message += "Connecté à ";
+  message += "Connected to ";
   message += ssid;
   message += "\n";
-  message += "Adresse IP : ";
+  message += "IP address : ";
   message += WiFi.localIP().toString();
   message += "\n";
   state += message;
   Serial.println(message);
 
   if (MDNS.begin("esp8266")) {
-    message = "Répondeur MDNS démarré\n";
+    message = "mDNS responder started.\n";
     state += message;
     Serial.print(message);
   }
@@ -176,16 +216,16 @@ void setup(void){
   server.onNotFound(handleNotFound);
 
   server.begin();
-  message = "Serveur HTTP démarré\n";
+  message = "HTTP server started.\n";
   state += message;
   Serial.print(message);
 
   //init BMP280
-  if (!bme.begin((uint8_t)(0x76))) {
-    message = "BME280 introuvable ! Vérifiez le branchement.\n";
+  if (!bme.begin(bme_i2c_address)) {
+    message = "BME280 not found ! Check wiring & I2C address.\n";
   }
   else {
-    message = "BME280 opérationnel !\n";
+    message = "BME280 found.\n";
   }
   state += message;
   Serial.print(message);
